@@ -34,7 +34,22 @@ app.use(function* home(next) {
 app.use(function* login(next) {
   if (this.request.path !== '/login') return yield* next;
   if (this.request.method === 'GET') return this.response.body = form.replace('{{csrf}}', this.csrf);
+  if (!this.request.method === 'POST') return yield* next;
 
+  var body = yield parse(this);
+
+  if (!this.assertCSRF(body)){
+    return this.status = 403;
+  }
+
+  if (body.username !== 'username' && body.password !== 'password') {
+    return this.status = 400;
+  }
+
+  // log in
+  this.status = 303;
+  this.session.authenticated = true;
+  this.redirect('/');
 })
 
 /**
@@ -45,7 +60,9 @@ app.use(function* login(next) {
 
 app.use(function* logout(next) {
   if (this.request.path !== '/logout') return yield* next;
-
+  this.session.authenticated = null;
+  this.response.status = 303;
+  return this.redirect('/login');
 })
 
 /**
